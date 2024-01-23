@@ -11,10 +11,10 @@
 // RUN: %target-swift-frontend -package-name MyPkg -emit-module -enable-library-evolution -emit-module-path=%t/resilient_enum.swiftmodule -module-name=resilient_enum -I %t %S/Inputs/package_types/resilient_enum.swift
 // RUN: %target-swift-frontend -package-name MyPkg -emit-module -enable-library-evolution -emit-module-path=%t/resilient_class.swiftmodule -module-name=resilient_class -I %t %S/Inputs/package_types/resilient_class.swift
 
-// RUN: %target-swift-frontend -package-name MyPkg -I %t -emit-ir -enable-library-evolution %t/package_resilience.swift > %t/ir-result
-// RUN: %FileCheck %t/package_resilience.swift --check-prefixes=CHECK -DINT=i%target-ptrsize -D#MDWORDS=7 -D#MDSIZE32=52 -D#MDSIZE64=80 -D#WORDSIZE=%target-alignment < %t/ir-result
+// RUN: %target-swift-frontend -module-name package_resilience -package-name MyPkg -I %t -emit-ir -o %t/ir-result.ll -enable-library-evolution %t/package_resilience.swift
+// RUN: %FileCheck %t/package_resilience.swift --check-prefixes=CHECK -DINT=i%target-ptrsize -D#MDWORDS=7 -D#MDSIZE32=52 -D#MDSIZE64=80 -D#WORDSIZE=%target-alignment < %t/ir-result.ll
 
-// RUN: %target-swift-frontend -package-name MyPkg -I %t -emit-ir -enable-library-evolution -O %t/package_resilience.swift -package-name MyPkg
+// RUN: %target-swift-frontend -module-name package_resilience -package-name MyPkg -I %t -emit-ir -enable-library-evolution -O %t/package_resilience.swift -package-name MyPkg
 // REQUIRES: objc_codegen
 // REQUIRES: OS=macosx || OS=ios || OS=tvos || OS=watchos
 // REQUIRES: CPU=x86_64 || CPU=arm64

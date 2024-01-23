@@ -309,7 +309,7 @@ SILFunction *SILFunctionBuilder::getOrCreateFunction(
     assert(mod.getStage() == SILStage::Raw || fn->getLinkage() == linkage ||
            (forDefinition == ForDefinition_t::NotForDefinition &&
             (fnLinkage == linkageForDef ||
-             (linkageForDef == SILLinkage::PublicNonABI &&
+             (linkageForDef == SILLinkage::PublicNonABI && // ESQ: package non abi
               fnLinkage == SILLinkage::Shared))));
     if (forDefinition) {
       // In all the cases where getConstantLinkage returns something

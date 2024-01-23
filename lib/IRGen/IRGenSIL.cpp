@@ -2942,7 +2942,7 @@ FunctionPointer::Kind irgen::classifyFunctionPointerKind(SILFunction *fn) {
 // function pointer data structure.
 static bool mayDirectlyCallAsync(SILFunction *fn) {
   if (fn->getLinkage() == SILLinkage::Shared ||
-      fn->getLinkage() == SILLinkage::PublicNonABI) {
+      fn->getLinkage() == SILLinkage::PublicNonABI) { // ESQ: packagenonabi
     return false;
   }
 

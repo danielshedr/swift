@@ -31,7 +31,7 @@ void IRGenModule::emitSILDifferentiabilityWitness(
   if (dw->isDeclaration())
     return;
   // Don't emit `public_external` witnesses.
-  if (dw->getLinkage() == SILLinkage::PublicExternal)
+  if (dw->getLinkage() == SILLinkage::PublicExternal) // ESQ: package external
     return;
   ConstantInitBuilder builder(*this);
   auto diffWitnessContents = builder.beginStruct();

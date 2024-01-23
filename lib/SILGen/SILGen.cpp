@@ -602,7 +602,8 @@ SILGenModule::getKeyPathProjectionCoroutine(bool isReadAccess,
 
   SILGenFunctionBuilder builder(*this);
   fn = builder.createFunction(
-      SILLinkage::PublicExternal, functionName, functionTy, env,
+      SILLinkage::PublicExternal, // ESQ: package
+                              functionName, functionTy, env,
       /*location*/ llvm::None, IsNotBare, IsNotTransparent, IsNotSerialized,
       IsNotDynamic, IsNotDistributed, IsNotRuntimeAccessible);
 
@@ -1203,7 +1204,7 @@ void SILGenModule::emitOrDelayFunction(SILDeclRef constant) {
     return;
 
   if (auto *f = getEmittedFunction(constant, ForDefinition)) {
-    emitFunctionDefinition(constant, f);
+    emitFunctionDefinition(constant, f); // didn't get hit for package foo
     return;
   }
 

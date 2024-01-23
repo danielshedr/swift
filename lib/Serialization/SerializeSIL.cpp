@@ -62,10 +62,13 @@ static unsigned toStableSILLinkage(SILLinkage linkage) {
   switch (linkage) {
   case SILLinkage::Public: return SIL_LINKAGE_PUBLIC;
   case SILLinkage::PublicNonABI: return SIL_LINKAGE_PUBLIC_NON_ABI;
+  case SILLinkage::Package: return SIL_LINKAGE_PACKAGE;
+  case SILLinkage::PackageNonABI: return SIL_LINKAGE_PACKAGE_NON_ABI;
   case SILLinkage::Hidden: return SIL_LINKAGE_HIDDEN;
   case SILLinkage::Shared: return SIL_LINKAGE_SHARED;
   case SILLinkage::Private: return SIL_LINKAGE_PRIVATE;
   case SILLinkage::PublicExternal: return SIL_LINKAGE_PUBLIC_EXTERNAL;
+  case SILLinkage::PackageExternal: return SIL_LINKAGE_PACKAGE_EXTERNAL;
   case SILLinkage::HiddenExternal: return SIL_LINKAGE_HIDDEN_EXTERNAL;
   }
   llvm_unreachable("bad linkage");
@@ -3308,7 +3311,7 @@ void SILSerializer::writeSILBlock(const SILModule *SILMod) {
                "Should have emitted function body earlier");
         writeSILFunction(F, true);
       }
-    } else if (F.getLinkage() == SILLinkage::Public &&
+    } else if (F.getLinkage() == SILLinkage::Public && // ESQ: package
                resilience != ResilienceStrategy::Resilient &&
                F.hasArgumentEffects()) {
       writeSILFunction(F, true);

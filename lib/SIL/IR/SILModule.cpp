@@ -75,12 +75,19 @@ class SILModule::SerializationCallback final
       // translation units in the same Swift module.
       decl->setLinkage(SILLinkage::Shared);
       return;
+    case SILLinkage::Package:
+      decl->setLinkage(SILLinkage::PackageExternal);
+      return;
+    case SILLinkage::PackageNonABI: // Same as PublicNonABI
+      decl->setLinkage(SILLinkage::Shared);
+      return;
     case SILLinkage::Hidden:
       decl->setLinkage(SILLinkage::HiddenExternal);
       return;
     case SILLinkage::Private:
       llvm_unreachable("cannot make a private external symbol");
     case SILLinkage::PublicExternal:
+    case SILLinkage::PackageExternal:
     case SILLinkage::HiddenExternal:
     case SILLinkage::Shared:
       return;
@@ -895,9 +902,9 @@ void SILModule::promoteLinkages() {
       continue;
 
     if (Fn.isDefinition())
-      Fn.setLinkage(SILLinkage::Public);
+      Fn.setLinkage(SILLinkage::Public); // ESQ: package
     else
-      Fn.setLinkage(SILLinkage::PublicExternal);
+      Fn.setLinkage(SILLinkage::PublicExternal); // ESQ: package external
   }
 
   for (auto &Global : silGlobals) {
@@ -906,9 +913,9 @@ void SILModule::promoteLinkages() {
       continue;
 
     if (Global.isDefinition())
-      Global.setLinkage(SILLinkage::Public);
+      Global.setLinkage(SILLinkage::Public); // ESQ: package
     else
-      Global.setLinkage(SILLinkage::PublicExternal);
+      Global.setLinkage(SILLinkage::PublicExternal); // ESQ: package ext
   }
 
   // TODO: Promote linkage of other SIL entities
@@ -979,6 +986,8 @@ SILLinkage swift::getDeclSILLinkage(const ValueDecl *decl) {
     linkage = SILLinkage::Hidden;
     break;
   case AccessLevel::Package:
+    linkage = SILLinkage::Package;
+    break;
   case AccessLevel::Public:
   case AccessLevel::Open:
     linkage = SILLinkage::Public;

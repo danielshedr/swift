@@ -46,7 +46,8 @@ void IRGenModule::emitSILGlobalVariable(SILGlobalVariable *var) {
       auto DbgTy = DebugTypeInfo::getGlobal(var, Int8Ty, *this);
       DebugInfo->emitGlobalVariableDeclaration(
           nullptr, var->getDecl()->getName().str(), "", DbgTy,
-          var->getLinkage() != SILLinkage::Public, SILLocation(var->getDecl()));
+          var->getLinkage() != SILLinkage::Public, // ESQ: package
+                                               SILLocation(var->getDecl()));
     }
     return;
   }

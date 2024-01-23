@@ -141,19 +141,19 @@ internal class InternalClass {
 }
 
 package class PackageClass {
-  // CHECK-DAG: sil{{( \[.+\])*}} [ossa] @$s22accessibility_warnings12PackageClassC9publicVarSivg
+  // CHECK-DAG: sil package [transparent] [ossa] @$s22accessibility_warnings12PackageClassC9publicVarSivg
   public var publicVar = 0
 
-  // CHECK-DAG: sil{{( \[.+\])*}} [ossa] @$s22accessibility_warnings12PackageClassC19publicVarPrivateSetSivg
+  // CHECK-DAG: sil package [transparent] [ossa] @$s22accessibility_warnings12PackageClassC19publicVarPrivateSetSivg
   public private(set) var publicVarPrivateSet = 0
 
   // expected-warning@+1 {{'public(set)' modifier is redundant for a public property}} {{10-22=}}
   public public(set) var publicVarPublicSet = 0
 
-  // CHECK-DAG: sil{{( \[.+\])*}} [ossa] @$s22accessibility_warnings12PackageClassC16publicVarGetOnlySivg
+  // CHECK-DAG: sil package [ossa] @$s22accessibility_warnings12PackageClassC16publicVarGetOnlySivg
   public var publicVarGetOnly: Int { return 0 }
 
-  // CHECK-DAG: sil{{( \[.+\])*}} [ossa] @$s22accessibility_warnings12PackageClassC15publicVarGetSetSivg
+  // CHECK-DAG: sil package [ossa] @$s22accessibility_warnings12PackageClassC15publicVarGetSetSivg
   public var publicVarGetSet: Int { get { return 0 } set {} }
 
   // CHECK-DAG: sil hidden{{( \[.+\])*}} [ossa] @$s22accessibility_warnings12PackageClassCACycfc

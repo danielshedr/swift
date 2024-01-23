@@ -3993,7 +3993,7 @@ SILGenModule::emitKeyPathComponentForDecl(SILLocation loc,
           getRepresentativeAccessorForKeyPath(baseDecl), expansion);
       if (representative.isForeign)
         return false;
-      if (representative.getLinkage(ForDefinition) > SILLinkage::PublicNonABI)
+      if (representative.getLinkage(ForDefinition) > SILLinkage::PackageNonABI) // ESQ:package
         return false;
     }
     
@@ -4344,7 +4344,7 @@ visitMagicIdentifierLiteralExpr(MagicIdentifierLiteralExpr *E, SGFContext C) {
     } else {
       auto DSOHandle = M.lookUpGlobalVariable("__dso_handle");
       if (!DSOHandle)
-        DSOHandle = SILGlobalVariable::create(M, SILLinkage::PublicExternal,
+        DSOHandle = SILGlobalVariable::create(M, SILLinkage::PublicExternal, // ESQ: package
                                               IsNotSerialized, "__dso_handle",
                                               BuiltinRawPtrTy);
       ModuleBase = B.createGlobalAddr(SILLoc, DSOHandle, /*dependencyToken=*/ SILValue());

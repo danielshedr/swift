@@ -606,7 +606,7 @@ public:
     auto witnessSerialized = Serialized;
     if (witnessSerialized &&
         fixmeWitnessHasLinkageThatNeedsToBePublic(witnessRef)) {
-      witnessLinkage = SILLinkage::Public;
+      witnessLinkage = SILLinkage::Public; // ESQ: package
       witnessSerialized = IsNotSerialized;
     } else {
       // This is the "real" rule; the above case should go away once we
