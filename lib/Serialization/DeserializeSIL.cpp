@@ -79,7 +79,7 @@ static llvm::Optional<SILLinkage> fromStableSILLinkage(unsigned value) {
   case SIL_LINKAGE_HIDDEN_EXTERNAL: return SILLinkage::HiddenExternal;
   }
 
-  llvm_unreachable("Invalid SIL linkage");  // ESQ: msg
+  llvm_unreachable("Invalid SIL linkage");
 }
 
 static llvm::Optional<SILVTable::Entry::Kind>
@@ -648,14 +648,26 @@ SILDeserializer::readSILFunctionChecked(DeclID FID, SILFunction *existingFn,
     // referenced as a declaration, and Shared when it has
     // a deserialized body.
     if (isAvailableExternally(fn->getLinkage())) {
-      if (linkage == SILLinkage::PublicNonABI || // ESQ: package non abi
-          linkage == SILLinkage::Shared) {
+      switch (linkage) {
+      case SILLinkage::PublicNonABI:
+      case SILLinkage::PackageNonABI:
+      case SILLinkage::Shared:
         fn->setLinkage(SILLinkage::Shared);
-      } else if (hasPublicVisibility(linkage)) {
-        // Cross-module-optimization can change the linkage to public. In this
-        // case we need to update the linkage of the function (which is
-        // originally just derived from the AST).
-        fn->setLinkage(SILLinkage::PublicExternal); // ESQ: package external
+        break;
+      case SILLinkage::Public:
+      case SILLinkage::Package:
+      case SILLinkage::Hidden:
+      case SILLinkage::Private:
+      case SILLinkage::PublicExternal:
+      case SILLinkage::PackageExternal:
+      case SILLinkage::HiddenExternal:
+        if (hasPublicVisibility(linkage)) {
+          // Cross-module-optimization can change the linkage to public. In this
+          // case we need to update the linkage of the function (which is
+          // originally just derived from the AST).
+          fn->setLinkage(SILLinkage::PublicExternal);
+        }
+        break;
       }
     }
 

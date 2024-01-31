@@ -223,7 +223,21 @@ inline SILLinkage addExternalToLinkage(SILLinkage linkage) {
 /// Return whether the linkage indicates that an object has a
 /// definition outside the current SILModule.
 inline bool isAvailableExternally(SILLinkage linkage) {
-  return linkage >= SILLinkage::PublicExternal; // ESQ: package external
+  switch (linkage) {
+  case SILLinkage::Public:
+  case SILLinkage::PublicNonABI:
+  case SILLinkage::Package:
+  case SILLinkage::PackageNonABI:
+  case SILLinkage::Hidden:
+  case SILLinkage::Shared:
+  case SILLinkage::Private:
+    return false;
+  case SILLinkage::PublicExternal:
+  case SILLinkage::PackageExternal:
+  case SILLinkage::HiddenExternal:
+    return true;
+  }
+  llvm_unreachable("Unhandled SILLinkage in switch.");
 }
 
 /// Return whether the given linkage indicates that an object's
@@ -231,9 +245,45 @@ inline bool isAvailableExternally(SILLinkage linkage) {
 /// If \p is true then we are in whole-module compilation.
 inline bool isPossiblyUsedExternally(SILLinkage linkage, bool wholeModule) {
   if (wholeModule) {
-    return linkage <= SILLinkage::PackageNonABI; // ESQ: change this to linkage method
+    switch (linkage) {
+    case SILLinkage::Public:
+    case SILLinkage::PublicNonABI:
+    case SILLinkage::Package:
+    case SILLinkage::PackageNonABI:
+      return true;
+    case SILLinkage::Hidden:
+    case SILLinkage::Shared:
+    case SILLinkage::Private:
+    case SILLinkage::PublicExternal:
+    case SILLinkage::PackageExternal:
+    case SILLinkage::HiddenExternal:
+      return false;
+    }
+  } else {
+    switch (linkage) {
+    case SILLinkage::Public:
+    case SILLinkage::PublicNonABI:
+    case SILLinkage::Package:
+    case SILLinkage::PackageNonABI:
+    case SILLinkage::Hidden:
+      return true;
+    case SILLinkage::Shared:
+    case SILLinkage::Private:
+    case SILLinkage::PublicExternal:
+    case SILLinkage::PackageExternal:
+    case SILLinkage::HiddenExternal:
+      return false;
+    }
   }
-  return linkage <= SILLinkage::Hidden;
+  llvm_unreachable("Unhandled SILLinkage in switch.");
+}
+
+inline bool isPublicOrPackage(SILLinkage linkage, int mode = 0) {
+  if (mode == 1) // non abi
+    return linkage == SILLinkage::PublicNonABI || linkage == SILLinkage::PackageNonABI;
+  if (mode == 2) // external
+    return linkage == SILLinkage::PublicExternal || linkage == SILLinkage::PackageExternal;
+  return linkage == SILLinkage::Public || linkage == SILLinkage::Package;
 }
 
 SILLinkage getDeclSILLinkage(const ValueDecl *decl);
@@ -299,12 +349,22 @@ inline SILLinkage effectiveLinkageForClassMember(SILLinkage linkage,
                                                  SubclassScope scope) {
   switch (scope) {
   case SubclassScope::External:
-    if (linkage == SILLinkage::Private || linkage == SILLinkage::Hidden)
-      return SILLinkage::Public; // ESQ: package?
-    if (linkage == SILLinkage::HiddenExternal)
-      return SILLinkage::PublicExternal; // ESQ: package?
+    switch (linkage) {
+      case SILLinkage::Package:
+      case SILLinkage::Hidden:
+      case SILLinkage::Shared:
+      case SILLinkage::Private:
+        return SILLinkage::Public;
+      case SILLinkage::PackageExternal:
+      case SILLinkage::HiddenExternal:
+        return SILLinkage::PublicExternal;
+      case SILLinkage::Public:
+      case SILLinkage::PublicNonABI:
+      case SILLinkage::PublicExternal:
+      case SILLinkage::PackageNonABI:
+        break;
+    }
     break;
-
   case SubclassScope::Internal:
     if (linkage == SILLinkage::Private)
       return SILLinkage::Hidden;

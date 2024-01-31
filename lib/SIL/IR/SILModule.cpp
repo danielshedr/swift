@@ -902,9 +902,9 @@ void SILModule::promoteLinkages() {
       continue;
 
     if (Fn.isDefinition())
-      Fn.setLinkage(SILLinkage::Public); // ESQ: package
+      Fn.setLinkage(SILLinkage::Public);
     else
-      Fn.setLinkage(SILLinkage::PublicExternal); // ESQ: package external
+      Fn.setLinkage(SILLinkage::PublicExternal);
   }
 
   for (auto &Global : silGlobals) {
@@ -913,9 +913,9 @@ void SILModule::promoteLinkages() {
       continue;
 
     if (Global.isDefinition())
-      Global.setLinkage(SILLinkage::Public); // ESQ: package
+      Global.setLinkage(SILLinkage::Public);
     else
-      Global.setLinkage(SILLinkage::PublicExternal); // ESQ: package ext
+      Global.setLinkage(SILLinkage::PublicExternal);
   }
 
   // TODO: Promote linkage of other SIL entities
