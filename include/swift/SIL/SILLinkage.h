@@ -278,14 +278,6 @@ inline bool isPossiblyUsedExternally(SILLinkage linkage, bool wholeModule) {
   llvm_unreachable("Unhandled SILLinkage in switch.");
 }
 
-inline bool isPublicOrPackage(SILLinkage linkage, int mode = 0) {
-  if (mode == 1) // non abi
-    return linkage == SILLinkage::PublicNonABI || linkage == SILLinkage::PackageNonABI;
-  if (mode == 2) // external
-    return linkage == SILLinkage::PublicExternal || linkage == SILLinkage::PackageExternal;
-  return linkage == SILLinkage::Public || linkage == SILLinkage::Package;
-}
-
 SILLinkage getDeclSILLinkage(const ValueDecl *decl);
 
 inline bool hasPublicVisibility(SILLinkage linkage) {
