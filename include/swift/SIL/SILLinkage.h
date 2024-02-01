@@ -58,10 +58,14 @@ enum class SILLinkage : uint8_t {
   /// PublicNonABI functions must be definitions.
   PublicNonABI,
 
-  /// Visible to multiple Swift modules within a package.
+  /// Same as \c Public, except the definition is visible within a package
+  /// of modules.
   Package,
 
-  /// Used for default argument expressions and `@_alwaysEmitIntoClient`.
+  /// Similar to \c PublicNonABI, this definition is used for symbols treated
+  /// as package but do not have package entry points in the generated binary.
+  /// It's used for default argument expressions and `@_alwaysEmitIntoClient`.
+  /// When deserialized, this will become \c Shared linkage.
   PackageNonABI,
 
   /// This object definition is visible only to the current Swift
@@ -97,7 +101,9 @@ enum class SILLinkage : uint8_t {
   /// definition.
   PublicExternal,
 
-  /// Used to reference a package symbol in a different package.
+  /// Similar to \c PublicExternal.
+  /// Used to reference a \c Package definition in a different module
+  /// within a package.
   PackageExternal,
 
   /// A Public or Hidden definition with the same name as this object
@@ -244,36 +250,20 @@ inline bool isAvailableExternally(SILLinkage linkage) {
 /// definition might be required outside the current SILModule.
 /// If \p is true then we are in whole-module compilation.
 inline bool isPossiblyUsedExternally(SILLinkage linkage, bool wholeModule) {
-  if (wholeModule) {
-    switch (linkage) {
-    case SILLinkage::Public:
-    case SILLinkage::PublicNonABI:
-    case SILLinkage::Package:
-    case SILLinkage::PackageNonABI:
-      return true;
-    case SILLinkage::Hidden:
-    case SILLinkage::Shared:
-    case SILLinkage::Private:
-    case SILLinkage::PublicExternal:
-    case SILLinkage::PackageExternal:
-    case SILLinkage::HiddenExternal:
-      return false;
-    }
-  } else {
-    switch (linkage) {
-    case SILLinkage::Public:
-    case SILLinkage::PublicNonABI:
-    case SILLinkage::Package:
-    case SILLinkage::PackageNonABI:
-    case SILLinkage::Hidden:
-      return true;
-    case SILLinkage::Shared:
-    case SILLinkage::Private:
-    case SILLinkage::PublicExternal:
-    case SILLinkage::PackageExternal:
-    case SILLinkage::HiddenExternal:
-      return false;
-    }
+  switch (linkage) {
+  case SILLinkage::Public:
+  case SILLinkage::PublicNonABI:
+  case SILLinkage::Package:
+  case SILLinkage::PackageNonABI:
+    return true;
+  case SILLinkage::Hidden:
+    return wholeModule;
+  case SILLinkage::Shared:
+  case SILLinkage::Private:
+  case SILLinkage::PublicExternal:
+  case SILLinkage::PackageExternal:
+  case SILLinkage::HiddenExternal:
+    return false;
   }
   llvm_unreachable("Unhandled SILLinkage in switch.");
 }
@@ -342,18 +332,18 @@ inline SILLinkage effectiveLinkageForClassMember(SILLinkage linkage,
   switch (scope) {
   case SubclassScope::External:
     switch (linkage) {
-      case SILLinkage::Package:
       case SILLinkage::Hidden:
-      case SILLinkage::Shared:
       case SILLinkage::Private:
         return SILLinkage::Public;
-      case SILLinkage::PackageExternal:
       case SILLinkage::HiddenExternal:
         return SILLinkage::PublicExternal;
       case SILLinkage::Public:
       case SILLinkage::PublicNonABI:
-      case SILLinkage::PublicExternal:
+      case SILLinkage::Package:
       case SILLinkage::PackageNonABI:
+      case SILLinkage::PublicExternal:
+      case SILLinkage::PackageExternal:
+      case SILLinkage::Shared:
         break;
     }
     break;
