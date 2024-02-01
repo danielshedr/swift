@@ -178,6 +178,12 @@ public:
     return Action::Continue(stmt);
   }
 
+  PreWalkAction walkToDeclPre(Decl *D) override {
+    /// Decls get type-checked separately, except for PatternBindingDecls,
+    /// whose initializers we want to walk into.
+    return Action::VisitChildrenIf(isa<PatternBindingDecl>(D));
+  }
+
 private:
   DeclContext *currentClosureDC() const {
     return ClosureDCs.empty() ? nullptr : ClosureDCs.back();
@@ -485,7 +491,7 @@ struct SyntacticElementContext
     }
   }
 
-  bool isSingleExpressionClosure(ConstraintSystem &cs) {
+  bool isSingleExpressionClosure(ConstraintSystem &cs) const {
     if (auto ref = getAsAnyFunctionRef()) {
       if (cs.getAppliedResultBuilderTransform(*ref))
         return false;
@@ -999,14 +1005,11 @@ private:
   }
 
   void visitSwitchStmt(SwitchStmt *switchStmt) {
-    auto *switchLoc = cs.getConstraintLocator(
-        locator, LocatorPathElt::SyntacticElement(switchStmt));
-
     SmallVector<ElementInfo, 4> elements;
     {
       auto *subjectExpr = switchStmt->getSubjectExpr();
       {
-        elements.push_back(makeElement(subjectExpr, switchLoc));
+        elements.push_back(makeElement(subjectExpr, locator));
 
         SyntacticElementTarget target(subjectExpr, context.getAsDeclContext(),
                                       CTP_Unused, Type(),
@@ -1016,16 +1019,13 @@ private:
       }
 
       for (auto rawCase : switchStmt->getRawCases())
-        elements.push_back(makeElement(rawCase, switchLoc));
+        elements.push_back(makeElement(rawCase, locator));
     }
 
-    createConjunction(elements, switchLoc);
+    createConjunction(elements, locator);
   }
 
   void visitDoCatchStmt(DoCatchStmt *doStmt) {
-    auto *doLoc = cs.getConstraintLocator(
-        locator, LocatorPathElt::SyntacticElement(doStmt));
-
     SmallVector<ElementInfo, 4> elements;
 
     // First, let's record a body of `do` statement. Note we need to add a
@@ -1033,15 +1033,15 @@ private:
     // brace conjunction as being isolated if 'doLoc' is for an isolated
     // conjunction (as is the case with 'do' expressions).
     auto *doBodyLoc = cs.getConstraintLocator(
-        doLoc, LocatorPathElt::SyntacticElement(doStmt->getBody()));
+        locator, LocatorPathElt::SyntacticElement(doStmt->getBody()));
     elements.push_back(makeElement(doStmt->getBody(), doBodyLoc));
 
     // After that has been type-checked, let's switch to
     // individual `catch` statements.
     for (auto *catchStmt : doStmt->getCatches())
-      elements.push_back(makeElement(catchStmt, doLoc));
+      elements.push_back(makeElement(catchStmt, locator));
 
-    createConjunction(elements, doLoc);
+    createConjunction(elements, locator);
   }
 
   void visitCaseStmt(CaseStmt *caseStmt) {
@@ -1115,8 +1115,8 @@ private:
 
       for (auto node : braceStmt->getElements()) {
         if (auto expr = node.dyn_cast<Expr *>()) {
-          auto generatedExpr = cs.generateConstraints(
-            expr, context.getAsDeclContext(), /*isInputExpression=*/false);
+          auto generatedExpr =
+              cs.generateConstraints(expr, context.getAsDeclContext());
           if (!generatedExpr) {
             hadError = true;
           }
@@ -1242,33 +1242,7 @@ private:
   }
 
   void visitReturnStmt(ReturnStmt *returnStmt) {
-    // Single-expression closures are effectively a `return` statement,
-    // so let's give them a special locator as to indicate that.
-    // Return statements might not have a result if we have a closure whose
-    // implicit returned value is coerced to Void.
-    if (context.isSingleExpressionClosure(cs) && returnStmt->hasResult()) {
-      auto *expr = returnStmt->getResult();
-      assert(expr && "single expression closure without expression?");
-
-      expr = cs.generateConstraints(expr, context.getAsDeclContext(),
-                                    /*isInputExpression=*/false);
-      if (!expr) {
-        hadError = true;
-        return;
-      }
-
-      auto contextualResultInfo = getContextualResultInfo();
-      cs.addConstraint(ConstraintKind::Conversion, cs.getType(expr),
-                       contextualResultInfo.getType(),
-                       cs.getConstraintLocator(
-                           context.getAsAbstractClosureExpr().get(),
-                           LocatorPathElt::ClosureBody(
-                               /*hasImpliedReturn=*/returnStmt->isImplied())));
-      return;
-    }
-
     Expr *resultExpr;
-
     if (returnStmt->hasResult()) {
       resultExpr = returnStmt->getResult();
       assert(resultExpr && "non-empty result without expression?");
@@ -1280,10 +1254,10 @@ private:
       resultExpr = getVoidExpr(cs.getASTContext(), returnStmt->getEndLoc());
     }
 
-    auto contextualResultInfo = getContextualResultInfo();
+    auto contextualResultInfo = getContextualResultInfoFor(returnStmt);
+
     SyntacticElementTarget target(resultExpr, context.getAsDeclContext(),
-                                  contextualResultInfo,
-                                  /*isDiscarded=*/false);
+                                  contextualResultInfo, /*isDiscarded=*/false);
 
     if (cs.generateConstraints(target)) {
       hadError = true;
@@ -1328,7 +1302,7 @@ private:
     createConjunction({resultElt}, locator);
   }
 
-  ContextualTypeInfo getContextualResultInfo() const {
+  ContextualTypeInfo getContextualResultInfoFor(ReturnStmt *returnStmt) const {
     auto funcRef = AnyFunctionRef::fromDeclContext(context.getAsDeclContext());
     if (!funcRef)
       return {Type(), CTP_Unused};
@@ -1337,8 +1311,18 @@ private:
       return {transform->bodyResultType, CTP_ReturnStmt};
 
     if (auto *closure =
-            getAsExpr<ClosureExpr>(funcRef->getAbstractClosureExpr()))
-      return {cs.getClosureType(closure)->getResult(), CTP_ClosureResult};
+            getAsExpr<ClosureExpr>(funcRef->getAbstractClosureExpr())) {
+      // Single-expression closures need their contextual type locator anchored
+      // on the closure itself. Otherwise we use the default contextual type
+      // locator, which will be created for us.
+      ConstraintLocator *loc = nullptr;
+      if (context.isSingleExpressionClosure(cs) && returnStmt->hasResult()) {
+        loc = cs.getConstraintLocator(
+            closure, {LocatorPathElt::ClosureBody(
+                         /*hasImpliedReturn=*/returnStmt->isImplied())});
+      }
+      return {cs.getClosureType(closure)->getResult(), CTP_ClosureResult, loc};
+    }
 
     return {funcRef->getBodyResultType(), CTP_ReturnStmt};
   }
@@ -1556,7 +1540,9 @@ bool ConstraintSystem::generateConstraints(SingleValueStmtExpr *E) {
 
   // Generate the conjunction for the branches.
   auto context = SyntacticElementContext::forSingleValueStmtExpr(E, join);
-  SyntacticElementConstraintGenerator generator(*this, context, loc);
+  auto *stmtLoc =
+      getConstraintLocator(loc, LocatorPathElt::SyntacticElement(S));
+  SyntacticElementConstraintGenerator generator(*this, context, stmtLoc);
   generator.visit(S);
   return generator.hadError;
 }
@@ -2156,22 +2142,15 @@ private:
       mode = convertToResult;
     }
 
-    llvm::Optional<SyntacticElementTarget> resultTarget;
-    if (auto target = cs.getTargetFor(returnStmt)) {
-      resultTarget = *target;
-    } else {
-      // Single-expression closures have to handle returns in a special
-      // way so the target has to be created for them during solution
-      // application based on the resolved type.
-      assert(context.isSingleExpressionClosure(cs));
-      resultTarget = SyntacticElementTarget(
-          resultExpr, context.getAsDeclContext(),
-          mode == convertToResult ? CTP_ClosureResult : CTP_Unused,
-          mode == convertToResult ? resultType : Type(),
-          /*isDiscarded=*/false);
+    auto target = *cs.getTargetFor(returnStmt);
+
+    // If we're not converting to a result, unset the contextual type.
+    if (mode != convertToResult) {
+      target.setExprConversionType(Type());
+      target.setExprContextualTypePurpose(CTP_Unused);
     }
 
-    if (auto newResultTarget = rewriteTarget(*resultTarget)) {
+    if (auto newResultTarget = rewriteTarget(target)) {
       resultExpr = newResultTarget->getAsExpr();
     }
 

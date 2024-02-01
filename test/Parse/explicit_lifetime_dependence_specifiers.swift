@@ -1,5 +1,5 @@
 // RUN: %target-typecheck-verify-swift -disable-availability-checking -enable-experimental-feature NonescapableTypes -disable-experimental-parser-round-trip   -enable-experimental-feature NoncopyableGenerics -enable-builtin-module
-// REQUIRES: asserts
+// REQUIRES: noncopyable_generics
 
 import Builtin
 
@@ -93,7 +93,8 @@ func invalidSpecifier3(_ x: borrowing BufferView) -> _borrow(*) BufferView { // 
   return BufferView(x.ptr)
 } 
 
-func invalidSpecifier4(_ x: borrowing BufferView) -> _borrow(0) BufferView {
+// TODO: Diagnose using param indices on func decls in sema
+func invalidSpecifier4(_ x: borrowing BufferView) -> _borrow(0) BufferView { // expected-error{{invalid lifetime dependence specifier, self is valid in non-static methods only}}
   return BufferView(x.ptr)
 }
 
@@ -115,4 +116,3 @@ struct Wrapper : ~Escapable {
     return view
   }
 }
-

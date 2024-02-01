@@ -440,6 +440,9 @@ def disable_round_trip_debug_types : Flag<["-"], "disable-round-trip-debug-types
 def debug_generic_signatures : Flag<["-"], "debug-generic-signatures">,
   HelpText<"Debug generic signatures">;
 
+def debug_inverse_requirements : Flag<["-"], "debug-inverse-requirements">,
+  HelpText<"Print real requirements in -debug_generic_signatures output">;
+
 def debug_forbid_typecheck_prefix : Separate<["-"], "debug-forbid-typecheck-prefix">,
   HelpText<"Triggers llvm fatal_error if typechecker tries to typecheck a decl "
            "with the provided prefix name">;
@@ -659,6 +662,14 @@ def enable_experimental_associated_type_inference :
 def disable_experimental_associated_type_inference :
   Flag<["-"], "disable-experimental-associated-type-inference">,
   HelpText<"Disable experimental associated type inference improvements">;
+
+def enable_experimental_lifetime_dependence_inference :
+  Flag<["-"], "enable-experimental-lifetime-dependence-inference">,
+  HelpText<"Enable experimental lifetime dependence inference">;
+
+def disable_experimental_lifetime_dependence_inference :
+  Flag<["-"], "disable-experimental-lifetime-dependence-inference">,
+  HelpText<"Disable experimental lifetime dependence inference">;
 
 def disable_availability_checking : Flag<["-"],
   "disable-availability-checking">,

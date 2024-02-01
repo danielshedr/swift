@@ -6,6 +6,8 @@
 // RUN:     -enable-builtin-module                           \
 // RUN:     -debug-diagnostic-names
 
+// REQUIRES: noncopyable_generics
+
 //==============================================================================
 //===========================DEPENDENCY-FREE TESTS=(BEGIN)===================={{
 //==============================================================================
@@ -60,8 +62,7 @@ struct S_Explicit_With_Function_C : _BitwiseCopyable {
 public struct S_Public {}
 
 struct S_Explicit_With_S_Public : _BitwiseCopyable {
-  var s: S_Public // expected-error   {{non_bitwise_copyable_type_member}}
-                  // expected-note@-4 {{add_nominal_bitwise_copyable_conformance}}
+  var s: S_Public
 }
 
 struct S_Explicit_With_Generic<T> : _BitwiseCopyable {
@@ -92,21 +93,6 @@ struct S_Explicit_With_Metatype_Optional_Generic<T> : _BitwiseCopyable {
 
 struct S_Explicit_With_Metatype_Optional_AnyObject : _BitwiseCopyable {
   var ty: Optional<AnyObject>.Type
-}
-
-struct S_Unchecked : @unchecked _BitwiseCopyable {}
-
-struct S_Implicit_With_S_Unchecked {
-  var s: S_Unchecked
-}
-
-func passS_Implicit_With_S_Unchecked(_ s: S_Implicit_With_S_Unchecked) {
-  take1(s) // expected-error{{type_does_not_conform_decl_owner}}
-           // expected-note@-92 {{where_requirement_failure_one_subst}}
-}
-
-struct S_Explicit_With_S_Unchecked : _BitwiseCopyable {
-  var s: S_Unchecked
 }
 
 //==============================================================================
